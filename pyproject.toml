@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ichi-mcp"
+version = "0.1.0"
+description = "MCP stdio server for the free ICHI (Internet Cyber Health Index) public API at ichi.global"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Joe Bernik" }]
+keywords = ["mcp", "model-context-protocol", "cybersecurity", "threat-intelligence", "ichi"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Security",
+]
+dependencies = [
+  "mcp>=1.2",
+  "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/bernik-bot/ichi-mcp"
+ICHI = "https://ichi.global"
+Methodology = "https://ichi.global/methodology"
+
+[project.scripts]
+ichi-mcp = "ichi_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ichi_mcp"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
