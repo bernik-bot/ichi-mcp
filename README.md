@@ -71,6 +71,27 @@ If `uvx` isn't on Claude Desktop's PATH, use its absolute path (`which uvx`).
 }
 ```
 
+### Docker
+
+```bash
+docker build -t ichi-mcp .
+docker run -i --rm ichi-mcp          # stdio: point an MCP client at this command
+```
+
+The image runs as a non-root user, needs no secrets, volumes or ports, and only makes outbound HTTPS GET requests to
+`ichi.global`. `python examples/introspect.py docker run -i --rm ichi-mcp` starts it, initializes, and lists the tools
+(no tool is called, so no network is needed); CI runs exactly that.
+
+### Read-only
+
+Every tool only reads ICHI's public API (HTTP GET, no API key, no state) and is declared so in its MCP annotations:
+`readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, `openWorldHint: true`.
+
+### Glama
+
+`glama.json` names the maintainer (`bernik-bot`) so the listing can be claimed on [Glama](https://glama.ai/mcp/servers).
+Glama builds the `Dockerfile`, starts the server and lists its tools; the score badge is added here once the listing exists.
+
 ### Configuration
 
 | Env var | Default | Meaning |
