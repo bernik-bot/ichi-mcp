@@ -70,7 +70,7 @@ def run(coro):
 def test_current_index_maps_fields():
     out = run(api.get_current_index(transport({"/api/current-index": CURRENT})))
     assert out["ok"] is True
-    assert out["score"] == 65.01 and out["band"] == "ELEVATED" and out["band_range"] == "50-69"
+    assert out["score"] == 65.01 and out["band"] == "ELEVATED" and out["band_range"] == "50 to under 70"
     assert out["evaluated_at"] == "2026-10-31T13:20:26.513Z"
     dims = {d["key"]: d for d in out["dimensions"]}
     assert dims["V"]["name"] == "Vulnerability Pressure" and dims["V"]["contribution"] == 8.11
@@ -88,7 +88,7 @@ def test_current_index_missing_current():
 
 def test_http_error_is_graceful():
     out = run(api.get_current_index(transport({})))
-    assert out == {"ok": False, "error": out["error"], "link": "https://ichi.global"}
+    assert out == {"ok": False, "error": out["error"], "link": "https://ichi.global", "attribution": api.ATTRIBUTION}
     assert "HTTP 404" in out["error"]
 
 
@@ -130,3 +130,40 @@ def test_health_summary():
     assert out["feeds"] == {"resolved": 28, "total": 28, "failed": 0}
     assert out["failed_feeds"] == ["Feed X", "y"]
     assert out["not_connected"] == ["GreyNoise Event Feed"]
+
+
+def test_band_ranges_match_ichi_tiers():
+    # composite-lib classifyCTI: <25 NORMAL, <50 GUARDED, <70 ELEVATED, <85 HIGH, else CRITICAL
+    assert [api._band_range(b) for b, _, _ in api.BANDS] == [
+        "0 to under 25",
+        "25 to under 50",
+        "50 to under 70",
+        "70 to under 85",
+        "85-100",
+    ]
+
+
+def test_absent_lists_state_nothing_never_none():
+    # a list the API did not serve is None ("not stated"), never [] ("none")
+    cur = json.loads(json.dumps(CURRENT))
+    del cur["impaired_sources"]
+    out = run(api.get_current_index(transport({"/api/current-index": cur})))
+    fr = out["freshness"]
+    assert fr["impaired_sources"] is None and fr["invalid_inputs"] is None and fr["unavailable_dimensions"] is None
+    assert fr["stale_inputs"] == ["phishing"]
+    h = run(api.get_source_health(transport({"/api/health": HEALTH})))
+    assert h["stale_feeds"] is None and h["dormant_feeds"] is None
+    assert h["included_in_score"] == ["cves", "kev"]
+    served_empty = dict(HEALTH, staleFeeds=[])
+    assert run(api.get_source_health(transport({"/api/health": served_empty})))["stale_feeds"] == []
+
+
+def test_every_answer_names_its_source():
+    answers = [
+        run(api.get_current_index(transport({"/api/current-index": CURRENT}))),
+        run(api.get_recent_alerts(1, transport({"/api/alerts": RSS}))),
+        run(api.get_source_health(transport({"/api/health": HEALTH}))),
+        run(api.get_current_index(transport({}))),
+    ]
+    for a in answers:
+        assert a["attribution"].startswith("Data: ICHI - Internet Cyber Health Index (https://ichi.global)")

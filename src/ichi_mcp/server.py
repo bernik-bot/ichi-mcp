@@ -10,14 +10,31 @@ try:  # mcp >= 2: FastMCP was renamed MCPServer
 except ImportError:  # mcp 1.x
     from mcp.server.fastmcp import FastMCP as _Server
 
-from . import api
+from mcp.types import ToolAnnotations
+
+from . import __version__, api
+
+# Every tool only reads ICHI's public API (HTTP GET, no key, no state): read-only, non-destructive, idempotent, and
+# open-world (its answer comes from a live external service). Directories such as Glama show these hints.
+READ_ONLY = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True}
+
+
+def _ann(title: str) -> ToolAnnotations:
+    return ToolAnnotations(title=title, **READ_ONLY)
+
 
 INSTRUCTIONS = "Tools for the ICHI (Internet Cyber Health Index, https://ichi.global) public API. " + api.POSITIONING
 
-mcp = _Server("ichi", instructions=INSTRUCTIONS)
+try:  # the server reports its own version to clients and directories (mcp >= 2 and recent 1.x accept it)
+    mcp = _Server("ichi", instructions=INSTRUCTIONS, version=__version__)
+except TypeError:  # mcp 1.x FastMCP: no parameter, and serverInfo would report the SDK's own version
+    mcp = _Server("ichi", instructions=INSTRUCTIONS)
+    _low = getattr(mcp, "_mcp_server", None)
+    if _low is not None and hasattr(_low, "version"):
+        _low.version = __version__
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Current ICHI score"))
 async def get_current_index() -> dict[str, Any]:
     """Get the current ICHI score (0-100), band (NORMAL/GUARDED/ELEVATED/HIGH/CRITICAL),
     per-dimension sub-scores with human-readable names, and freshness/impairment info.
@@ -28,14 +45,14 @@ async def get_current_index() -> dict[str, Any]:
     return await api.get_current_index()
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Recent ICHI critical advisories"))
 async def get_recent_alerts(limit: int = 5) -> dict[str, Any]:
     """Get the latest items (default 5, max 50) from ICHI's critical-advisory RSS feed
     (https://ichi.global/api/alerts): title, link, published time, category, description."""
     return await api.get_recent_alerts(limit)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("ICHI source health"))
 async def get_source_health() -> dict[str, Any]:
     """Summarize ICHI's source health (https://ichi.global/api/health): overall status,
     confidence, live/stale/failed feed counts, and which sources feed the score."""

@@ -71,6 +71,39 @@ If `uvx` isn't on Claude Desktop's PATH, use its absolute path (`which uvx`).
 }
 ```
 
+### Docker
+
+```bash
+docker build -t ichi-mcp .
+docker run -i --rm ichi-mcp          # stdio: point an MCP client at this command
+```
+
+The image runs as a non-root user, needs no secrets, volumes or ports, and only makes outbound HTTPS GET requests to
+`ichi.global`. `python examples/introspect.py docker run -i --rm ichi-mcp` starts it, initializes, and lists the tools
+(no tool is called, so no network is needed); CI runs exactly that.
+
+### Read-only
+
+Every tool only reads ICHI's public API (HTTP GET, no API key, no state) and is declared so in its MCP annotations:
+`readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, `openWorldHint: true`.
+
+### Directories
+
+Ready for submission; not listed in any directory yet. [docs/DIRECTORIES.md](docs/DIRECTORIES.md) has the listing text,
+each directory's requirements and the owner's steps.
+
+`glama.json` names the maintainer (`bernik-bot`) so the listing can be claimed on [Glama](https://glama.ai/mcp/servers).
+Glama builds the `Dockerfile`, starts the server and lists its tools.
+<!-- TODO: add the Glama badge only after the listing exists and passes its checks (not before). -->
+
+For the official MCP Registry (once the package is on PyPI): mcp-name: io.github.bernik-bot/ichi-mcp
+
+### Attribution
+
+Every answer carries `attribution`: "Data: ICHI - Internet Cyber Health Index (https://ichi.global). Methodology:
+https://ichi.global/methodology". Keep it when you show ICHI data. A list the API did not serve is `null` (not stated),
+never `[]` (none).
+
 ### Configuration
 
 | Env var | Default | Meaning |
