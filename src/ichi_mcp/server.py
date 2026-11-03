@@ -12,7 +12,7 @@ except ImportError:  # mcp 1.x
 
 from mcp.types import ToolAnnotations
 
-from . import api
+from . import __version__, api
 
 # Every tool only reads ICHI's public API (HTTP GET, no key, no state): read-only, non-destructive, idempotent, and
 # open-world (its answer comes from a live external service). Directories such as Glama show these hints.
@@ -25,7 +25,13 @@ def _ann(title: str) -> ToolAnnotations:
 
 INSTRUCTIONS = "Tools for the ICHI (Internet Cyber Health Index, https://ichi.global) public API. " + api.POSITIONING
 
-mcp = _Server("ichi", instructions=INSTRUCTIONS)
+try:  # the server reports its own version to clients and directories (mcp >= 2 and recent 1.x accept it)
+    mcp = _Server("ichi", instructions=INSTRUCTIONS, version=__version__)
+except TypeError:  # mcp 1.x FastMCP: no parameter, and serverInfo would report the SDK's own version
+    mcp = _Server("ichi", instructions=INSTRUCTIONS)
+    _low = getattr(mcp, "_mcp_server", None)
+    if _low is not None and hasattr(_low, "version"):
+        _low.version = __version__
 
 
 @mcp.tool(annotations=_ann("Current ICHI score"))

@@ -53,3 +53,11 @@ def test_the_client_only_reads():
     assert "client.get(" in src
     for verb in ("client.post(", "client.put(", "client.patch(", "client.delete(", "client.request("):
         assert verb not in src, verb
+
+
+def test_server_reports_its_version():
+    from ichi_mcp import __version__
+    from ichi_mcp.server import mcp
+
+    version = getattr(mcp, "version", None) or getattr(getattr(mcp, "_mcp_server", None), "version", None)
+    assert version == __version__

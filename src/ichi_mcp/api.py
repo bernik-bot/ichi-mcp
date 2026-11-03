@@ -50,17 +50,28 @@ INFORMATIONAL_NAMES = {
     "obsEcosystem": "Ecosystem observation (informational, not scored)",
 }
 
+# ICHI's tier thresholds (composite-lib classifyCTI): each band runs from its lower bound up to, not including, the next
 BANDS = [
-    ("NORMAL", 0, 24),
-    ("GUARDED", 25, 49),
-    ("ELEVATED", 50, 69),
-    ("HIGH", 70, 84),
+    ("NORMAL", 0, 25),
+    ("GUARDED", 25, 50),
+    ("ELEVATED", 50, 70),
+    ("HIGH", 70, 85),
     ("CRITICAL", 85, 100),
 ]
 
+# Every answer names its source: ICHI's data is free to use with attribution (https://ichi.global/methodology).
+ATTRIBUTION = (
+    "Data: ICHI - Internet Cyber Health Index (https://ichi.global). Methodology: https://ichi.global/methodology"
+)
+
 
 def _err(message: str) -> dict[str, Any]:
-    return {"ok": False, "error": message, "link": SITE}
+    return {"ok": False, "error": message, "link": SITE, "attribution": ATTRIBUTION}
+
+
+def _list(value: Any) -> list[Any] | None:
+    """A served list as served; absent or malformed is None ("not stated"), never [] ("none")."""
+    return value if isinstance(value, list) else None
 
 
 def _client(transport: httpx.AsyncBaseTransport | None = None) -> httpx.AsyncClient:
@@ -103,7 +114,7 @@ async def _get_json(path: str, transport: httpx.AsyncBaseTransport | None = None
 def _band_range(band: str | None) -> str | None:
     for name, lo, hi in BANDS:
         if band == name:
-            return f"{lo}-{hi}"
+            return f"{lo}-100" if hi == 100 else f"{lo} to under {hi}"
     return None
 
 
@@ -150,15 +161,16 @@ async def get_current_index(transport: httpx.AsyncBaseTransport | None = None) -
             "stale_after_minutes": data.get("stale_after_minutes"),
             "served_at": data.get("served_at"),
             "completeness": completeness.get("state"),
-            "impaired_sources": data.get("impaired_sources") or [],
-            "stale_inputs": data.get("stale_inputs") or [],
-            "invalid_inputs": data.get("invalid_inputs") or [],
-            "degraded_dimensions": cur.get("degraded_dimensions") or [],
-            "unavailable_dimensions": cur.get("unavailable_dimensions") or [],
+            "impaired_sources": _list(data.get("impaired_sources")),
+            "stale_inputs": _list(data.get("stale_inputs")),
+            "invalid_inputs": _list(data.get("invalid_inputs")),
+            "degraded_dimensions": _list(cur.get("degraded_dimensions")),
+            "unavailable_dimensions": _list(cur.get("unavailable_dimensions")),
         },
         "link": SITE,
         "methodology": METHODOLOGY,
         "note": POSITIONING,
+        "attribution": ATTRIBUTION,
     }
 
 
@@ -216,12 +228,13 @@ async def get_recent_alerts(limit: int = 5, transport: httpx.AsyncBaseTransport 
         "items": items,
         "feed_url": f"{SITE}/api/alerts",
         "link": f"{SITE}/alert",
+        "attribution": ATTRIBUTION,
     }
 
 
-def _feed_names(value: Any) -> list[str]:
+def _feed_names(value: Any) -> list[str] | None:
     if not isinstance(value, list):
-        return []
+        return None  # not served: states nothing (never "no feeds")
     out = []
     for v in value:
         if isinstance(v, dict):
@@ -243,7 +256,7 @@ async def get_source_health(transport: httpx.AsyncBaseTransport | None = None) -
         "confidence": data.get("confidence"),
         "updated": data.get("updated"),
         "feeds": {k: feeds[k] for k in keys if k in feeds},
-        "included_in_score": data.get("includedInScore") or [],
+        "included_in_score": _list(data.get("includedInScore")),
         "failed_feeds": _feed_names(data.get("failedFeeds")),
         "stale_feeds": _feed_names(data.get("staleFeeds")),
         "delayed_feeds": _feed_names(data.get("delayedFeeds")),
@@ -251,4 +264,5 @@ async def get_source_health(transport: httpx.AsyncBaseTransport | None = None) -
         "dormant_feeds": _feed_names(data.get("dormant")),
         "not_connected": _feed_names(data.get("notConnected")),
         "link": f"{SITE}/api/health",
+        "attribution": ATTRIBUTION,
     }
