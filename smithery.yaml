@@ -1,0 +1,11 @@
+# Smithery configuration: https://smithery.ai/docs/build/project-config
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+    additionalProperties: false
+  commandFunction: |-
+    (config) => ({command: 'ichi-mcp', args: []})
+build:
+  dockerBuildPath: ./
